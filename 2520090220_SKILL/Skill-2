@@ -1,0 +1,100 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <termios.h>
+
+#define MAX_INPUT 100
+
+void enableRawMode(struct termios *original)
+{
+    struct termios raw;
+
+    tcgetattr(STDIN_FILENO, original);
+    raw = *original;
+
+    raw.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+}
+
+void disableRawMode(struct termios *original)
+{
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, original);
+}
+
+int main()
+{
+    char input[MAX_INPUT];
+    int length;
+    char ch;
+    struct termios original;
+
+    printf("Interactive Shell Started\n");
+    printf("Type a command or type 'exit' to quit.\n");
+
+    enableRawMode(&original);
+
+    while (1)
+    {
+        length = 0;
+
+        printf("\nshell> ");
+        fflush(stdout);
+
+        while (1)
+        {
+            ch = getchar();
+
+            /* Enter key */
+            if (ch == '\n' || ch == '\r')
+            {
+                input[length] = '\0';
+                printf("\n");
+                break;
+            }
+
+            /* Backspace key */
+            if (ch == 127 || ch == 8)
+            {
+                if (length > 0)
+                {
+                    length--;
+                    printf("\b \b");
+                    fflush(stdout);
+                }
+                continue;
+            }
+
+            /* Store normal characters */
+            if (length < MAX_INPUT - 1)
+            {
+                input[length] = ch;
+                length++;
+
+                putchar(ch);
+                fflush(stdout);
+            }
+        }
+
+        /* Exit condition */
+        if (strcmp(input, "exit") == 0)
+        {
+            printf("Exiting shell...\n");
+            break;
+        }
+
+        /* Handle empty input */
+        if (length == 0)
+        {
+            printf("No command entered.\n");
+        }
+        else
+        {
+            printf("You entered: %s\n", input);
+        }
+    }
+
+    disableRawMode(&original);
+
+    return 0;
+}
