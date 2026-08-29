@@ -1,0 +1,57 @@
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+#include <string.h>
+#include <time.h>
+
+int main() {
+    int pipefd[2];
+    pid_t pid;
+
+    if (pipe(pipefd) == -1) {
+        perror("pipe");
+        return 1;
+    }
+
+    pid = fork();
+
+    if (pid < 0) {
+        perror("fork");
+        return 1;
+    }
+
+    if (pid > 0) {
+        // Parent - Producer
+        close(pipefd[0]);
+
+        char data[] = "Data produced by parent process";
+
+        clock_t start = clock();
+
+        write(pipefd[1], data, strlen(data) + 1);
+
+        clock_t end = clock();
+
+        printf("Producer: %s\n", data);
+        printf("Communication time: %.6f seconds\n",
+               (double)(end - start) / CLOCKS_PER_SEC);
+
+        close(pipefd[1]);
+        wait(NULL);
+    }
+    else {
+        // Child - Consumer
+        close(pipefd[1]);
+
+        char buffer[100];
+
+        read(pipefd[0], buffer, sizeof(buffer));
+
+        printf("Consumer received: %s\n", buffer);
+
+        close(pipefd[0]);
+    }
+
+    return 0;
+}
