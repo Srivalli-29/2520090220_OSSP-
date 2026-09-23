@@ -1,0 +1,85 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+#define MAX_INPUT 500
+#define MAX_OUTPUT 1000
+
+void expand_variables(const char *input, char *output) {
+    int i = 0, j = 0;
+
+    while (input[i] != '\0' && j < MAX_OUTPUT - 1) {
+
+        if (input[i] == '$') {
+            char varname[100];
+            int k = 0;
+
+            /* ${VARIABLE} format */
+            if (input[i + 1] == '{') {
+                i += 2;
+
+                while (input[i] != '\0' &&
+                       input[i] != '}' &&
+                       k < 99) {
+                    varname[k++] = input[i++];
+                }
+
+                varname[k] = '\0';
+
+                if (input[i] == '}')
+                    i++;
+            }
+
+            /* $VARIABLE format */
+            else {
+                i++;
+
+                while (input[i] != '\0' &&
+                       (isalnum((unsigned char)input[i]) ||
+                        input[i] == '_') &&
+                       k < 99) {
+                    varname[k++] = input[i++];
+                }
+
+                varname[k] = '\0';
+            }
+
+            if (k > 0) {
+                const char *value = getenv(varname);
+
+                if (value != NULL) {
+                    while (*value != '\0' &&
+                           j < MAX_OUTPUT - 1) {
+                        output[j++] = *value++;
+                    }
+                }
+            }
+        }
+        else {
+            output[j++] = input[i++];
+        }
+    }
+
+    output[j] = '\0';
+}
+
+int main() {
+    char input[MAX_INPUT];
+    char output[MAX_OUTPUT];
+
+    printf("Variable Expansion Test\n");
+    printf("Enter a string containing variables:\n");
+
+    if (fgets(input, sizeof(input), stdin) == NULL)
+        return 1;
+
+    input[strcspn(input, "\n")] = '\0';
+
+    expand_variables(input, output);
+
+    printf("\nOriginal: %s\n", input);
+    printf("Expanded: %s\n", output);
+
+    return 0;
+}
