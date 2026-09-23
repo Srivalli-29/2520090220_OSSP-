@@ -1,0 +1,76 @@
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <limits.h>
+
+int main() {
+    char current_dir[PATH_MAX];
+    char previous_dir[PATH_MAX];
+    char input[PATH_MAX];
+
+    if (getcwd(current_dir, sizeof(current_dir)) == NULL) {
+        perror("getcwd");
+        return 1;
+    }
+
+    strcpy(previous_dir, current_dir);
+
+    printf("Directory Navigation Test\n");
+    printf("Starting directory: %s\n", current_dir);
+
+    while (1) {
+        printf("\nEnter directory path");
+        printf(" (or 'back' / 'pwd' / 'exit'): ");
+
+        if (fgets(input, sizeof(input), stdin) == NULL)
+            break;
+
+        input[strcspn(input, "\n")] = '\0';
+
+        if (strcmp(input, "exit") == 0) {
+            printf("Exiting directory navigation.\n");
+            break;
+        }
+
+        if (strcmp(input, "pwd") == 0) {
+            if (getcwd(current_dir, sizeof(current_dir)) != NULL)
+                printf("Current directory: %s\n", current_dir);
+            else
+                perror("getcwd");
+
+            continue;
+        }
+
+        if (strcmp(input, "back") == 0) {
+            if (chdir(previous_dir) == 0) {
+                char temp[PATH_MAX];
+
+                strcpy(temp, current_dir);
+                strcpy(current_dir, previous_dir);
+                strcpy(previous_dir, temp);
+
+                printf("Returned to previous directory: %s\n",
+                       current_dir);
+            }
+            else {
+                perror("back");
+            }
+
+            continue;
+        }
+
+        if (chdir(input) == 0) {
+            strcpy(previous_dir, current_dir);
+
+            if (getcwd(current_dir, sizeof(current_dir)) != NULL)
+                printf("Directory changed successfully.\n");
+            else
+                perror("getcwd");
+        }
+        else {
+            perror("Invalid directory");
+        }
+    }
+
+    return 0;
+}
