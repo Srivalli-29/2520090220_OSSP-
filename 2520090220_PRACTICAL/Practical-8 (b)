@@ -1,0 +1,59 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+#define SIZE 100000
+
+int main() {
+    int *data = malloc(SIZE * sizeof(int));
+
+    if (data == NULL) {
+        perror("malloc");
+        return 1;
+    }
+
+    for (int i = 0; i < SIZE; i++) {
+        data[i] = i;
+    }
+
+    printf("Parent: Memory allocated and initialized.\n");
+    printf("Parent: PID = %d\n", getpid());
+
+    pid_t pid = fork();
+
+    if (pid < 0) {
+        perror("fork");
+        free(data);
+        return 1;
+    }
+
+    if (pid == 0) {
+        printf("\nChild: PID = %d\n", getpid());
+        printf("Child: Reading data before modification: %d\n", data[0]);
+
+        printf("Child: Modifying data...\n");
+
+        for (int i = 0; i < SIZE; i++) {
+            data[i] = data[i] + 100;
+        }
+
+        printf("Child: Data after modification: %d\n", data[0]);
+        printf("Child: Copy-on-Write causes modified pages to be copied.\n");
+
+        free(data);
+        exit(0);
+    }
+    else {
+        printf("\nParent: Waiting for child process...\n");
+
+        wait(NULL);
+
+        printf("Parent: Data remains unchanged: %d\n", data[0]);
+        printf("Parent: Child process completed.\n");
+    }
+
+    free(data);
+
+    return 0;
+}
