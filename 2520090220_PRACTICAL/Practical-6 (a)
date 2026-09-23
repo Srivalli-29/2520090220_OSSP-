@@ -1,0 +1,39 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+#define FIFO1 "client_to_server"
+#define FIFO2 "server_to_client"
+
+int main() {
+    char message[100];
+    char response[150];
+
+    printf("Client started.\n");
+
+    int fd_write = open(FIFO1, O_WRONLY);
+    int fd_read = open(FIFO2, O_RDONLY);
+
+    while (1) {
+        printf("Enter message: ");
+        fgets(message, sizeof(message), stdin);
+
+        message[strcspn(message, "\n")] = '\0';
+
+        write(fd_write, message, strlen(message) + 1);
+
+        if (strcmp(message, "exit") == 0)
+            break;
+
+        read(fd_read, response, sizeof(response));
+
+        printf("Server: %s\n", response);
+    }
+
+    close(fd_write);
+    close(fd_read);
+
+    return 0;
+}
