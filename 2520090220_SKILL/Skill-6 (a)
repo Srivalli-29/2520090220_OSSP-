@@ -1,0 +1,82 @@
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+
+#define MAX 100
+#define MAX_LEN 256
+
+void parse_command(char *input)
+{
+    char args[MAX][MAX_LEN];
+    int argc = 0;
+    int i = 0, j = 0;
+    int in_quotes = 0;
+
+    while (input[i] != '\0' && argc < MAX) {
+
+        while (isspace((unsigned char)input[i]) && !in_quotes)
+            i++;
+
+        if (input[i] == '\0')
+            break;
+
+        j = 0;
+
+        while (input[i] != '\0') {
+
+            if (input[i] == '\\') {
+                i++;
+                if (input[i] != '\0')
+                    args[argc][j++] = input[i++];
+            }
+            else if (input[i] == '"') {
+                in_quotes = !in_quotes;
+                i++;
+            }
+            else if (isspace((unsigned char)input[i]) && !in_quotes) {
+                break;
+            }
+            else {
+                args[argc][j++] = input[i++];
+            }
+
+            if (j >= MAX_LEN - 1)
+                break;
+        }
+
+        args[argc][j] = '\0';
+        argc++;
+
+        while (isspace((unsigned char)input[i]))
+            i++;
+    }
+
+    if (in_quotes) {
+        printf("Parser Error: Unclosed quotation mark\n");
+        return;
+    }
+
+    printf("\nParsed Arguments:\n");
+
+    for (i = 0; i < argc; i++)
+        printf("argv[%d] = [%s]\n", i, args[i]);
+
+    printf("\nTotal arguments: %d\n", argc);
+}
+
+int main()
+{
+    char input[MAX_LEN];
+
+    printf("===== PROCESS ESCAPE SEQUENCE PARSER =====\n");
+    printf("Enter command: ");
+
+    if (fgets(input, sizeof(input), stdin) == NULL)
+        return 1;
+
+    input[strcspn(input, "\n")] = '\0';
+
+    parse_command(input);
+
+    return 0;
+}
