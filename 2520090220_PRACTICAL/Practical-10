@@ -1,0 +1,60 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <string.h>
+
+int main() {
+    const char *filename = "mmap.txt";
+
+    // Open file
+    int fd = open(filename, O_RDWR | O_CREAT, 0666);
+
+    if (fd == -1) {
+        perror("open");
+        return 1;
+    }
+
+    // Set file size
+    const char *message = "Hello from mmap()!";
+    size_t size = strlen(message) + 1;
+
+    if (ftruncate(fd, size) == -1) {
+        perror("ftruncate");
+        close(fd);
+        return 1;
+    }
+
+    // Map file into memory
+    char *mapped = mmap(NULL, size,
+                        PROT_READ | PROT_WRITE,
+                        MAP_SHARED, fd, 0);
+
+    if (mapped == MAP_FAILED) {
+        perror("mmap");
+        close(fd);
+        return 1;
+    }
+
+    // Read from mapped memory
+    printf("Before modification: %s\n", mapped);
+
+    // Write to mapped memory
+    strcpy(mapped, "Modified using mmap()!");
+
+    // Ensure changes are written to file
+    msync(mapped, size, MS_SYNC);
+
+    printf("After modification: %s\n", mapped);
+
+    // Unmap memory
+    munmap(mapped, size);
+
+    close(fd);
+
+    printf("File updated successfully.\n");
+
+    return 0;
+}
