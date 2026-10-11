@@ -1,0 +1,122 @@
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+#define MAX_COMMANDS 5
+#define MAX_LENGTH 100
+
+int main(void) {
+    char commands[MAX_COMMANDS][MAX_LENGTH];
+    int n;
+
+    printf("Enter number of commands (1-5): ");
+
+    if (scanf("%d", &n) != 1 ||
+        n < 1 || n > MAX_COMMANDS) {
+        printf("Invalid number of commands.\n");
+        return 1;
+    }
+
+    getchar();
+
+    for (int i = 0; i < n; i++) {
+        printf("Enter command %d: ", i + 1);
+
+        if (fgets(commands[i], MAX_LENGTH, stdin) == NULL)
+            return 1;
+
+        commands[i][strcspn(commands[i], "\n")] = '\0';
+
+        if (commands[i][0] == '\0') {
+            printf("Empty command is not allowed.\n");
+            return 1;
+        }
+    }
+
+    printf("\nPipeline layout:\n");
+
+    for (int i = 0; i < n; i++) {
+        printf("%s", commands[i]);
+        if (i < n - 1)
+            printf(" | ");
+    }
+
+    printf("\nPipeline structure validated.\n");
+
+    int previous_read = -1;
+
+    for (int i = 0; i < n; i++) {
+        int fd[2] = {-1, -1};
+
+        if (i < n - 1 && pipe(fd) == -1) {
+            perror("pipe");
+            return 1;
+        }
+
+        pid_t pid = fork();
+
+        if (pid == -1) {
+            perror("fork");
+            return 1;
+        }
+
+        if (pid == 0) {
+            if (previous_read != -1)
+                dup2(previous_read, STDIN_FILENO);
+
+            if (i < n - 1)
+                dup2(fd[1], STDOUT_FILENO);
+
+            if (previous_read != -1)
+                close(previous_read);
+
+            if (fd[0] != -1)
+                close(fd[0]);
+
+            if (fd[1] != -1)
+                close(fd[1]);
+
+            execl("/bin/sh", "sh", "-c",
+                  commands[i], (char *)NULL);
+
+            perror("execl");
+            _exit(127);
+        }
+
+        if (previous_read != -1)
+            close(previous_read);
+
+        if (fd[1] != -1)
+            close(fd[1]);
+
+        previous_read = fd[0];
+    }
+
+    if (previous_read != -1)
+        close(previous_read);
+
+    int failed = 0;
+
+    for (int i = 0; i < n; i++) {
+        int status;
+
+        if (wait(&status) == -1) {
+            perror("wait");
+            failed = 1;
+            continue;
+        }
+
+        if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+            failed = 1;
+    }
+
+    if (failed)
+        printf("Pipeline finished with an error.\n");
+    else
+        printf("Pipeline execution completed successfully.\n");
+
+    return failed;
+}
