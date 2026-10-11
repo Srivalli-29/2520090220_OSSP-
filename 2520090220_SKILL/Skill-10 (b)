@@ -1,0 +1,77 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+int valid_name(const char *name) {
+    if (!(isalpha((unsigned char)name[0]) || name[0] == '_')) {
+        return 0;
+    }
+
+    for (int i = 1; name[i] != '\0'; i++) {
+        if (!(isalnum((unsigned char)name[i]) || name[i] == '_')) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+int main() {
+    char input[200];
+    char *name, *value, *equals;
+
+    printf("Enter export command (example: export CITY=Hyderabad): ");
+    if (fgets(input, sizeof(input), stdin) == NULL) {
+        return 1;
+    }
+
+    input[strcspn(input, "\n")] = '\0';
+
+    if (strncmp(input, "export ", 7) != 0) {
+        printf("Invalid syntax. Use export NAME=VALUE\n");
+        return 1;
+    }
+
+    equals = strchr(input + 7, '=');
+
+    if (equals == NULL) {
+        printf("Invalid syntax. Missing '='.\n");
+        return 1;
+    }
+
+    *equals = '\0';
+    name = input + 7;
+    value = equals + 1;
+
+    if (!valid_name(name)) {
+        printf("Invalid variable name.\n");
+        return 1;
+    }
+
+    if (getenv(name) != NULL) {
+        printf("Variable already exists. Updating it.\n");
+    }
+
+    if (setenv(name, value, 1) != 0) {
+        perror("setenv");
+        return 1;
+    }
+
+    printf("Variable set successfully.\n");
+    printf("%s=%s\n", name, getenv(name));
+
+    printf("Testing child process:\n");
+    char command[250];
+    snprintf(command, sizeof(command), "printenv %s", name);
+    int status = system(command);
+
+    if (status == -1) {
+        perror("system");
+        return 1;
+    }
+
+    printf("Child process test completed.\n");
+
+    return 0;
+}
