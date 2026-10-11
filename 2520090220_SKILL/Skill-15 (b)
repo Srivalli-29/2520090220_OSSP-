@@ -1,0 +1,116 @@
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+#define MAX_LENGTH 300
+#define MAX_STAGES 10
+
+int main(void) {
+    char input[MAX_LENGTH];
+    char work[MAX_LENGTH];
+    char *stages[MAX_STAGES];
+    int count = 0;
+
+    printf("Enter a pipeline command: ");
+
+    if (fgets(input, sizeof(input), stdin) == NULL)
+        return 1;
+
+    input[strcspn(input, "\n")] = '\0';
+
+    if (input[0] == '\0') {
+        printf("Error: Empty command.\n");
+        return 1;
+    }
+
+    if (strchr(input, '|') == NULL &&
+        strchr(input, '>') == NULL &&
+        strchr(input, '<') == NULL) {
+        printf("Warning: No pipe or redirection found.\n");
+    }
+
+    strcpy(work, input);
+
+    char *start = work;
+    char *p = work;
+
+    while (1) {
+        if (*p == '|') {
+            *p = '\0';
+
+            while (isspace((unsigned char)*start))
+                start++;
+
+            char *end = start + strlen(start) - 1;
+            while (end >= start &&
+                   isspace((unsigned char)*end)) {
+                *end-- = '\0';
+            }
+
+            if (*start == '\0' || count >= MAX_STAGES) {
+                printf("Invalid pipeline syntax.\n");
+                return 1;
+            }
+
+            stages[count++] = start;
+            start = p + 1;
+        } else if (*p == '\0') {
+            while (isspace((unsigned char)*start))
+                start++;
+
+            char *end = start + strlen(start);
+            while (end > start &&
+                   isspace((unsigned char)end[-1])) {
+                *--end = '\0';
+            }
+
+            if (*start == '\0' || count >= MAX_STAGES) {
+                printf("Invalid pipeline syntax.\n");
+                return 1;
+            }
+
+            stages[count++] = start;
+            break;
+        }
+
+        p++;
+    }
+
+    printf("\nExecution Plan:\n");
+
+    for (int i = 0; i < count; i++) {
+        printf("Stage %d: %s\n", i + 1, stages[i]);
+
+        if (i < count - 1)
+            printf("  Connect stdout to next stage's stdin.\n");
+
+        if (strchr(stages[i], '<') != NULL)
+            printf("  Redirect input from a file.\n");
+
+        if (strchr(stages[i], '>') != NULL)
+            printf("  Redirect output to a file.\n");
+    }
+
+    printf("\nSyntax validation successful.\n");
+    printf("Number of stages: %d\n", count);
+
+    printf("Executing the command using the shell...\n");
+    fflush(stdout);
+
+    int status = system(input);
+
+    if (status == -1) {
+        perror("system");
+        return 1;
+    }
+
+    if (WIFEXITED(status)) {
+        printf("Command exit status: %d\n", WEXITSTATUS(status));
+        return WEXITSTATUS(status);
+    }
+
+    printf("Command did not exit normally.\n");
+    return 1;
+}
